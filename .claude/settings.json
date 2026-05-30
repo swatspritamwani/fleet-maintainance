@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Read(./**)",
+      "Bash(mvn:*)",
+      "Bash(ng:*)",
+      "Bash(npm:*)",
+      "Bash(npx:*)",
+      "Bash(openapi-generator-cli:*)",
+      "Bash(podman:*)",
+      "Bash(terraform:*)",
+      "Bash(kubectl:*)",
+      "Bash(git status)",
+      "Bash(git diff:*)"
+    ],
+    "deny": [
+      "Read(./**/.env)",
+      "Read(./**/.env.*)",
+      "Read(./**/*secret*)",
+      "Read(./**/application-secrets.yml)",
+      "Read(./**/terraform.tfvars)",
+      "Read(./**/*.tfstate)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '[Fleet Maintenance] Read CLAUDE.md + .ai/ before codegen. Gates: /before-codegen -> generate -> /after-codegen. Guardrails GR-01..GR-12 are enforced.'"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '[Guardrail reminder] GR-02 no secrets in source - GR-04 domain has no framework imports - GR-06 Kafka common envelope - GR-07 controllers implement generated OpenAPI interfaces - GR-08 RFC 7807 errors. Run /after-codegen before delivery.'"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '[Delivery gate] If code was generated, run /after-codegen (mvn verify, checkstyle, spotbugs, contract tests, Kafka event validation) and record results in ai-delivery-log.md.'"
+          }
+        ]
+      }
+    ]
+  }
+}

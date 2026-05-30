@@ -1,0 +1,82 @@
+@if (loading()) {
+  <div class="spinner-overlay">
+    <mat-spinner diameter="56"></mat-spinner>
+  </div>
+}
+
+@if (!loading() && request()) {
+  <mat-card class="detail-card">
+    <mat-card-header>
+      <mat-card-title>Request {{ request()?.requestId?.substring(0, 8) }}</mat-card-title>
+      <mat-card-subtitle>Vehicle: {{ request()?.vehicleId }}</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      <div class="meta-row">
+        <span class="status-badge" [class]="request()?.priority | statusBadge">{{ request()?.priority }}</span>
+        <span class="status-badge" [class]="request()?.status | statusBadge">{{ request()?.status }}</span>
+      </div>
+
+      <p><strong>Description:</strong> {{ request()?.description }}</p>
+      <p><strong>Created by:</strong> {{ request()?.createdBy }}</p>
+      @if (request()?.assignedProvider) {
+        <p><strong>Assigned Provider:</strong> {{ request()?.assignedProvider?.name }}</p>
+      }
+
+      <div class="action-bar">
+        @if (canAssign()) {
+          <button mat-raised-button color="primary" (click)="navigateAssign()">Assign Provider</button>
+        }
+        @if (canInspect()) {
+          <button mat-raised-button color="accent" (click)="navigateInspect()">Submit Inspection</button>
+        }
+        @if (canDecide()) {
+          <button mat-raised-button style="background:#4caf50;color:white" (click)="approve()">Approve</button>
+          <button mat-raised-button color="warn" (click)="openRemarksDialog('REJECTED')">Reject</button>
+          <button mat-raised-button color="accent" (click)="openRemarksDialog('INFO_REQUESTED')">Request Info</button>
+        }
+      </div>
+
+      <mat-divider></mat-divider>
+
+      <p class="section-title">Inspection Reports</p>
+      @if (inspections().length === 0) {
+        <p>No inspection reports submitted yet.</p>
+      }
+      @for (insp of inspections(); track insp.reportId) {
+        <div class="inspection-item">
+          <p><strong>Findings:</strong> {{ insp.findings }}</p>
+          <p><strong>Estimated Cost:</strong> {{ insp.estimatedCost?.amount }} {{ insp.estimatedCost?.currency }}</p>
+          <p><strong>Duration:</strong> {{ insp.estimatedDurationDays }} day(s)</p>
+          <p><strong>Submitted by:</strong> {{ insp.submittedBy }} on {{ insp.submittedAt | date:'short' }}</p>
+        </div>
+      }
+
+      <mat-divider></mat-divider>
+
+      <p class="section-title">Decision History</p>
+      @if (decisions().length === 0) {
+        <p>No decisions recorded yet.</p>
+      }
+      @for (dec of decisions(); track dec.decisionId) {
+        <div class="decision-item">
+          <p><strong>Outcome:</strong>
+            <span [class]="'outcome-' + dec.outcome">{{ dec.outcome }}</span>
+          </p>
+          @if (dec.remarks) {
+            <p><strong>Remarks:</strong> {{ dec.remarks }}</p>
+          }
+          <p><strong>Decided by:</strong> {{ dec.decidedBy }} on {{ dec.decidedAt | date:'short' }}</p>
+        </div>
+      }
+    </mat-card-content>
+
+    <mat-card-actions>
+      <button mat-button (click)="goBack()">Back to List</button>
+    </mat-card-actions>
+  </mat-card>
+}
+
+@if (!loading() && !request()) {
+  <p>Request not found.</p>
+}

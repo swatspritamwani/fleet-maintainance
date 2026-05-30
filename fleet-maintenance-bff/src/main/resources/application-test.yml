@@ -1,0 +1,15 @@
+fleet:
+  dynamodb:
+    endpoint: http://localhost:8000
+    table-name: fleet-maintenance-test
+    outbox-table-name: fleet-maintenance-outbox-test
+  outbox:
+    poll-interval-ms: 100
+
+spring:
+  kafka:
+    bootstrap-servers: ${spring.embedded.kafka.brokers}
+
+logging:
+  level:
+    com.fleet.maintenance: DEBUG

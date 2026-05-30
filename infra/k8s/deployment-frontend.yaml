@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fleet-maintenance-frontend
+  namespace: fleet-maintenance
+  labels:
+    app: fleet-maintenance-frontend
+    app.kubernetes.io/part-of: fleet-maintenance
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: fleet-maintenance-frontend
+  template:
+    metadata:
+      labels:
+        app: fleet-maintenance-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: fleet-maintenance-frontend:latest
+          ports:
+            - containerPort: 80
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi

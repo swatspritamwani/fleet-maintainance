@@ -1,0 +1,35 @@
+name: requirement-agent
+description: >
+  Validates and refines functional requirements. Ensures completeness,
+  consistency, and traceability of the fleet maintenance specification.
+
+role: Requirements Analyst
+
+inputs:
+  - docs/functional-requirements.md
+
+responsibilities:
+  - Validate all use cases (UC-1 through UC-5, §5) have preconditions, postconditions,
+    and acceptance criteria (AC-1.x through AC-5.x)
+  - Ensure state machine transitions (§4.1) are complete — all 7 transitions defined,
+    no orphan states, terminal states REJECTED and PAYMENT_READY (§4.2) have no outgoing edges
+  - Verify all domain entities are referenced in at least one use case:
+      MaintenanceRequest (§3.2) → UC-1, UC-2, UC-4, UC-5
+      InspectionReport (§3.2) → UC-3
+      Decision (§3.2) → UC-4
+      Money value object (§3.3) → UC-5 (approvedCost)
+      VehicleRef value object (§3.3) → UC-1
+  - Check event schema completeness: all 7 Kafka topics (§6.1) have a corresponding
+    use case trigger and the PaymentReadinessEvent payload (§6.3) covers all required fields
+  - Flag ambiguities or contradictions in requirements (e.g., UC-3 allows re-submission
+    from INFO_REQUESTED — verify this aligns with §4.1 transition table)
+  - Ensure NFRs (§7) are measurable and testable:
+      NFR-6 response times specify p95 thresholds (< 500ms API, < 200ms Kafka)
+      NFR-8 coverage threshold is numeric (>= 80%)
+
+outputs:
+  - requirements-validation-report.md  # list of issues, suggestions, and confirmations
+
+guardrails_ref: .ai/guardrails/guardrails.md
+skills_ref: .ai/skills/skills.md
+hooks_ref: .ai/hooks/hooks.md

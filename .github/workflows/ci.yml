@@ -1,0 +1,224 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  JAVA_VERSION: '21'
+  NODE_VERSION: '20'
+  REGISTRY: ghcr.io/${{ github.repository_owner }}
+
+jobs:
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lint OpenAPI spec
+        run: npx @stoplight/spectral-cli lint api/openapi.yaml
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Lint Angular
+        working-directory: frontend
+        run: npm run lint
+
+  build-and-test:
+    name: Build & Test (Backend)
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+          cache: maven
+
+      - name: Start test infrastructure (DynamoDB Local + Kafka)
+        run: docker compose -f infra/compose-test.yml up -d
+        timeout-minutes: 2
+
+      - name: Wait for services
+        run: |
+          until curl -sf http://localhost:8000/shell/; do sleep 2; done
+          until docker exec fleet-kafka-test kafka-broker-api-versions --bootstrap-server localhost:9092 2>/dev/null; do sleep 3; done
+
+      - name: Build and test with coverage
+        run: mvn -B verify
+
+      - name: Upload JaCoCo coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jacoco-reports
+          path: '**/target/site/jacoco/'
+
+      - name: SonarQube analysis
+        if: github.ref == 'refs/heads/main'
+        run: mvn sonar:sonar
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+  frontend-test:
+    name: Build & Test (Frontend)
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run tests
+        working-directory: frontend
+        run: npm test -- --watch=false --browsers=ChromeHeadless
+
+      - name: Production build
+        working-directory: frontend
+        run: npm run build:prod
+
+  static-analysis:
+    name: Static Analysis
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+          cache: maven
+
+      - name: Checkstyle
+        run: mvn -B checkstyle:check
+
+      - name: SpotBugs
+        run: mvn -B spotbugs:check
+
+      - name: OWASP Dependency Check
+        run: mvn -B dependency-check:check
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+
+  container-build:
+    name: Build Container Images
+    runs-on: ubuntu-latest
+    needs: [build-and-test, static-analysis, frontend-test]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+          cache: maven
+
+      - name: Build BFF jar
+        run: mvn -B package -DskipTests -pl fleet-maintenance-bff -am
+
+      - name: Build BFF image
+        run: |
+          podman build \
+            -t fleet-maintenance-bff:${{ github.sha }} \
+            -f infra/Dockerfile .
+
+      - name: Build Frontend image
+        run: |
+          podman build \
+            -t fleet-maintenance-frontend:${{ github.sha }} \
+            -f infra/Dockerfile.frontend .
+
+  trivy-scan:
+    name: Trivy Security Scan
+    runs-on: ubuntu-latest
+    needs: container-build
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Scan BFF image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: fleet-maintenance-bff:${{ github.sha }}
+          format: table
+          exit-code: 1
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+          output: trivy-bff-report.txt
+
+      - name: Scan Frontend image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: fleet-maintenance-frontend:${{ github.sha }}
+          format: table
+          exit-code: 1
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+          output: trivy-frontend-report.txt
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: trivy-scan
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Push BFF image
+        run: |
+          echo "${{ secrets.REGISTRY_TOKEN }}" | podman login ghcr.io -u ${{ github.actor }} --password-stdin
+          podman push fleet-maintenance-bff:${{ github.sha }} ${{ env.REGISTRY }}/fleet-maintenance-bff:${{ github.sha }}
+          podman push fleet-maintenance-bff:${{ github.sha }} ${{ env.REGISTRY }}/fleet-maintenance-bff:latest
+
+      - name: Push Frontend image
+        run: |
+          podman push fleet-maintenance-frontend:${{ github.sha }} ${{ env.REGISTRY }}/fleet-maintenance-frontend:${{ github.sha }}
+          podman push fleet-maintenance-frontend:${{ github.sha }} ${{ env.REGISTRY }}/fleet-maintenance-frontend:latest
+
+      - name: Apply Terraform
+        run: |
+          terraform -chdir=infra/terraform init
+          terraform -chdir=infra/terraform apply -auto-approve \
+            -var="environment=prod" \
+            -var="aws_region=${{ vars.AWS_REGION }}" \
+            -var="kafka_bootstrap_servers=${{ vars.KAFKA_BOOTSTRAP_SERVERS }}"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Deploy to Kubernetes
+        run: |
+          echo "${{ secrets.KUBECONFIG_DATA }}" | base64 -d > /tmp/kubeconfig
+          KUBECONFIG=/tmp/kubeconfig kubectl apply -f infra/k8s/
+          KUBECONFIG=/tmp/kubeconfig kubectl set image deployment/fleet-maintenance-bff \
+            bff=${{ env.REGISTRY }}/fleet-maintenance-bff:${{ github.sha }} \
+            -n fleet-maintenance
+          KUBECONFIG=/tmp/kubeconfig kubectl set image deployment/fleet-maintenance-frontend \
+            frontend=${{ env.REGISTRY }}/fleet-maintenance-frontend:${{ github.sha }} \
+            -n fleet-maintenance
+          KUBECONFIG=/tmp/kubeconfig kubectl rollout status deployment/fleet-maintenance-bff \
+            -n fleet-maintenance --timeout=5m

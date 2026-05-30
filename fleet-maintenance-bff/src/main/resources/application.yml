@@ -1,0 +1,58 @@
+spring:
+  application:
+    name: fleet-maintenance-bff
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      enable-idempotence: true
+      retries: 5
+      retry-backoff-ms: 500
+      properties:
+        max.in.flight.requests.per.connection: 1
+    consumer:
+      group-id: fleet-maintenance-bff-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+
+fleet:
+  dynamodb:
+    table-name: ${DYNAMODB_TABLE_NAME:fleet-maintenance}
+    outbox-table-name: ${DYNAMODB_OUTBOX_TABLE_NAME:fleet-maintenance-outbox}
+    endpoint: ${DYNAMODB_ENDPOINT:}
+    region: ${AWS_REGION:us-east-1}
+  outbox:
+    poll-interval-ms: 500
+    batch-size: 50
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  health:
+    livenessState:
+      enabled: true
+    readinessState:
+      enabled: true
+
+server:
+  port: 8080
+  error:
+    include-message: always
+
+logging:
+  pattern:
+    console: '{"timestamp":"%d","level":"%p","service":"fleet-maintenance-bff","correlationId":"%X{correlationId}","message":"%m"}%n'

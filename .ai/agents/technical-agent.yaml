@@ -1,0 +1,49 @@
+name: technical-agent
+description: >
+  Makes architecture and infrastructure decisions. Produces technical
+  design documents, project structure, and deployment configurations.
+
+role: Technical Architect
+
+inputs:
+  - docs/functional-requirements.md
+  - docs/functional-design.md  # output from functional-agent
+  - .ai/skills/skills.md
+  - .ai/guardrails/guardrails.md
+
+responsibilities:
+  - Define Maven multi-module project structure (§9.1):
+      fleet-maintenance-bff (Spring Boot BFF, Spring Kafka, Spring MVC)
+      fleet-maintenance-domain (pure Java domain, no framework dependencies — GR-04)
+      fleet-maintenance-infrastructure (DynamoDB adapters, Kafka producers)
+  - Design DDD package layout per module following §9.2 layering rule (GR-04):
+      controller/ → application/ → domain/ → infrastructure/
+  - Choose and document outbox pattern implementation (§9.2, NFR-1):
+      DynamoDB outbox table with polling publisher OR DynamoDB Streams + Lambda trigger
+      Justify choice with idempotency and exactly-once delivery guarantees (AC-5.2, AC-5.3)
+  - Design DynamoDB single-table schema (§9.1):
+      Partition key / sort key strategy for MaintenanceRequest, InspectionReport, Decision
+      GSI definitions for status-based queries (Request List screen, §8.1)
+      Outbox table schema
+  - Define Podman image build strategy: multi-stage build (Java 21 + Maven build → JRE runtime),
+    non-root user, no secrets in layers (GR-02)
+  - Create Kubernetes manifest templates: Deployment, Service, ConfigMap, Secret references,
+    HorizontalPodAutoscaler, readiness/liveness probes via Spring Actuator (NFR-5)
+  - Create Terraform resource definitions for DynamoDB tables, Kafka topics (all 7, §6.1),
+    and K8s namespace/configmap provisioning
+  - Design GitHub Actions CI/CD pipeline stages:
+      lint → build → test → static-x`analysis → owasp-scan → container-build → trivy-scan → deploy
+  - Define environment configuration strategy: Spring profiles (dev/staging/prod),
+    ConfigMaps for non-sensitive config, K8s Secrets for credentials (GR-02)
+
+outputs:
+  - docs/technical-design.md
+  - project-structure.md  # annotated directory tree
+  - infra/Dockerfile
+  - infra/k8s/  # Kubernetes manifests
+  - infra/terraform/  # Terraform HCL files
+  - .github/workflows/ci.yml  # draft pipeline
+
+guardrails_ref: .ai/guardrails/guardrails.md
+skills_ref: .ai/skills/skills.md
+hooks_ref: .ai/hooks/hooks.md

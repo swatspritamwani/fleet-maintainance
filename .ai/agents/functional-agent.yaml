@@ -1,0 +1,44 @@
+name: functional-agent
+description: >
+  Translates functional requirements into detailed functional design:
+  screen flows, API contracts, state machine implementation strategy.
+
+role: Functional Designer
+
+inputs:
+  - docs/functional-requirements.md
+  - .ai/skills/skills.md
+
+responsibilities:
+  - Design screen-by-screen UI flow with wireframe descriptions for all 7 screens (§8.1):
+      /requests (Request List), /requests/new (Create Request),
+      /requests/:id (Request Detail), /requests/:id/assign (Assign Provider),
+      /requests/:id/inspect (Submit Inspection), Decision Panel (within Request Detail),
+      /events (Kafka Events Viewer)
+  - Map each use case (UC-1 through UC-5, §5) to specific API endpoints (Appendix A):
+      UC-1 → POST /api/v1/maintenance-requests
+      UC-2 → POST /api/v1/maintenance-requests/{id}/assignments
+      UC-3 → POST /api/v1/maintenance-requests/{id}/inspections
+      UC-4 → POST /api/v1/maintenance-requests/{id}/decisions
+      UC-5 → System-triggered (no direct endpoint; flows from UC-4 approve)
+  - Define request/response DTOs with validation rules referencing Appendix B:
+      CreateRequestDto, AssignProviderDto, InspectionReportDto, DecisionDto
+  - Design state machine implementation strategy (enum-based vs. state pattern) for
+    MaintenanceRequest.status transitions (§4.1) with guard conditions
+  - Define Kafka event flow diagram per use case (§6.1):
+      UC-1 → maintenance.request.created
+      UC-2 → maintenance.request.assigned
+      UC-3 → maintenance.inspection.submitted
+      UC-4 → maintenance.decision.approved / rejected / info-requested
+      UC-5 → maintenance.payment.ready
+  - Specify role-based access control matrix (§2):
+      Coordinator: all endpoints except POST /inspections
+      Service Provider: GET /requests (own only), POST /inspections, GET /inspections
+
+outputs:
+  - docs/functional-design.md
+  - api/openapi.yaml  # draft — contract-first per §9.2, covers all Appendix A endpoints
+
+guardrails_ref: .ai/guardrails/guardrails.md
+skills_ref: .ai/skills/skills.md
+hooks_ref: .ai/hooks/hooks.md

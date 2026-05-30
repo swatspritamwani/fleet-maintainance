@@ -1,0 +1,25 @@
+@use '@angular/material' as mat;
+
+@include mat.core();
+
+$fleet-primary: mat.define-palette(mat.$indigo-palette);
+$fleet-accent: mat.define-palette(mat.$blue-palette, A200, A100, A400);
+$fleet-warn: mat.define-palette(mat.$red-palette);
+
+$fleet-theme: mat.define-light-theme((
+  color: (
+    primary: $fleet-primary,
+    accent: $fleet-accent,
+    warn: $fleet-warn,
+  ),
+  typography: mat.define-typography-config(),
+  density: 0,
+));
+
+@include mat.all-component-themes($fleet-theme);
+
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: Roboto, 'Helvetica Neue', sans-serif;
+}

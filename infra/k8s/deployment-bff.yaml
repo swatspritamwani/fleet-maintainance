@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fleet-maintenance-bff
+  namespace: fleet-maintenance
+  labels:
+    app: fleet-maintenance-bff
+    app.kubernetes.io/part-of: fleet-maintenance
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: fleet-maintenance-bff
+  template:
+    metadata:
+      labels:
+        app: fleet-maintenance-bff
+    spec:
+      containers:
+        - name: bff
+          image: fleet-maintenance-bff:latest
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: fleet-maintenance-config
+          env:
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: fleet-maintenance-secrets
+                  key: aws-access-key-id
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: fleet-maintenance-secrets
+                  key: aws-secret-access-key
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+      terminationGracePeriodSeconds: 30
