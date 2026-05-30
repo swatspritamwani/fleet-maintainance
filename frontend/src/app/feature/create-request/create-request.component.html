@@ -1,0 +1,68 @@
+<mat-card class="form-card">
+  <mat-card-header>
+    <mat-card-title>New Maintenance Request</mat-card-title>
+  </mat-card-header>
+
+  <mat-card-content>
+    <form [formGroup]="form" (ngSubmit)="submit()">
+
+      <mat-form-field appearance="outline">
+        <mat-label>Vehicle ID</mat-label>
+        @if (providers().length > 0) {
+          <mat-select formControlName="vehicleId">
+            @for (p of providers(); track p.providerId) {
+              <mat-option [value]="p.providerId">{{ p.name }}</mat-option>
+            }
+          </mat-select>
+        } @else {
+          <input matInput formControlName="vehicleId" placeholder="Enter vehicle ID" />
+        }
+        @if (form.controls.vehicleId.invalid && form.controls.vehicleId.touched) {
+          <mat-error>Vehicle ID is required.</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Description</mat-label>
+        <textarea
+          matInput
+          formControlName="description"
+          rows="5"
+          maxlength="2000"
+          placeholder="Describe the maintenance issue...">
+        </textarea>
+        <mat-hint align="end">{{ form.controls.description.value.length }}/2000</mat-hint>
+        @if (form.controls.description.hasError('required') && form.controls.description.touched) {
+          <mat-error>Description is required.</mat-error>
+        }
+        @if (form.controls.description.hasError('maxlength')) {
+          <mat-error>Description cannot exceed 2000 characters.</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Priority</mat-label>
+        <mat-select formControlName="priority">
+          @for (p of priorityOptions; track p) {
+            <mat-option [value]="p">{{ p }}</mat-option>
+          }
+        </mat-select>
+        @if (form.controls.priority.invalid && form.controls.priority.touched) {
+          <mat-error>Priority is required.</mat-error>
+        }
+      </mat-form-field>
+
+      <div class="form-actions">
+        <button mat-button type="button" (click)="cancel()">Cancel</button>
+        <button mat-raised-button color="primary" type="submit" [disabled]="submitting()">
+          @if (submitting()) {
+            <mat-spinner diameter="20"></mat-spinner>
+          } @else {
+            Submit
+          }
+        </button>
+      </div>
+
+    </form>
+  </mat-card-content>
+</mat-card>

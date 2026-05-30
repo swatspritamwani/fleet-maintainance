@@ -1,0 +1,84 @@
+name: codegen-agent
+description: >
+  Generates implementation code from functional and technical designs.
+  Enforces all guardrails and runs hooks before and after generation.
+
+role: Code Generator
+
+inputs:
+  - docs/functional-requirements.md
+  - docs/functional-design.md
+  - docs/technical-design.md
+  - api/openapi.yaml
+  - .ai/guardrails/guardrails.md
+  - .ai/skills/skills.md
+  - .ai/hooks/hooks.md
+
+workflow:
+  1_before_codegen:
+    description: Execute all before_codegen hooks from .ai/hooks/hooks.md. Halt if any hook fails.
+    hooks:
+      - validate-functional-spec   # Confirms UC-1 through UC-5 are all referenced
+      - validate-openapi-contract  # Confirms api/openapi.yaml covers all Appendix A endpoints
+      - validate-domain-model      # Confirms §3.2 aggregates/entities mapped to classes
+      - validate-tech-stack        # Cross-checks pom.xml and package.json against skills.md
+      - validate-state-machine     # Confirms all §4.1 transitions are represented
+
+  2_generate:
+    description: Generate all implementation artefacts in order.
+    steps:
+      - Generate OpenAPI server stubs (Spring Boot interfaces) via openapi-generator-maven-plugin
+      - Generate Angular TypeScript HTTP client from api/openapi.yaml
+      - Implement domain layer:
+          MaintenanceRequest aggregate root (§3.2) with status enum and transition methods (§4.1)
+          InspectionReport entity (§3.2)
+          Decision entity (§3.2)
+          Money and VehicleRef value objects (§3.3) — immutable, no setters (GR-11)
+          Domain events for all 7 Kafka topics (§6.1) — immutable (GR-11), common envelope (GR-06)
+      - Implement application services (use case orchestration, UC-1 through UC-5):
+          CreateMaintenanceRequestUseCase
+          AssignProviderUseCase
+          SubmitInspectionUseCase
+          MakeDecisionUseCase
+          PublishPaymentReadinessUseCase
+      - Implement infrastructure adapters:
+          DynamoDB repositories via DynamoDB Enhanced Client (GR-04 — infrastructure layer only)
+          Kafka producers using Spring Kafka KafkaTemplate with outbox pattern (NFR-1)
+          Outbox polling publisher
+      - Implement BFF controllers (implement generated OpenAPI interfaces, delegate to application services):
+          MaintenanceRequestController (GR-07, GR-10)
+          EventController
+          ServiceProviderController
+      - Implement Angular components, services, and route guards for all 7 screens (§8.1):
+          Standalone components only (GR-05)
+          Role-based CanActivate guards for Coordinator vs Service Provider (§2, NFR-3)
+      - Generate unit tests for domain and application layers (GR-09: >= 80% coverage)
+      - Generate integration tests for all API endpoints (Appendix A) and Kafka event publishing (§6.1)
+      - Generate DynamoDB table provisioning definitions (Terraform HCL in infra/terraform/)
+
+  3_after_codegen:
+    description: Execute all after_codegen hooks from .ai/hooks/hooks.md. Report results in ai-delivery-log.md.
+    hooks:
+      - run-static-analysis      # Checkstyle, SpotBugs, SonarQube
+      - run-tests                # mvn test + ng test; enforce >= 80% coverage (GR-09)
+      - review-checklist         # REST naming, Kafka topics, DDD layering, RFC 7807 (GR-03, GR-04, GR-08)
+      - validate-kafka-events    # All 7 topics have producers; envelope schema matches §6.2
+      - openapi-contract-test    # Implementation matches api/openapi.yaml
+
+responsibilities:
+  - Produce compilable, runnable code that passes all quality gates
+  - Follow every guardrail in .ai/guardrails/guardrails.md (GR-01 through GR-12)
+  - Use only technologies listed in .ai/skills/skills.md
+  - Ensure 1:1 traceability from use cases (UC-1 through UC-5) to test cases (AC-1.x through AC-5.x)
+  - Log all generation decisions, errors, and corrections in ai-delivery-log.md
+
+outputs:
+  - src/                    # Backend Java code (BFF, domain, infrastructure modules)
+  - frontend/               # Angular code (components, services, guards)
+  - tests/                  # Unit tests + integration tests
+  - infra/dynamodb/         # DynamoDB table definitions (Terraform HCL)
+  - ai-delivery-log.md      # Updated with session results, errors, corrections
+
+guardrails_ref: .ai/guardrails/guardrails.md
+skills_ref: .ai/skills/skills.md
+hooks_ref: .ai/hooks/hooks.md

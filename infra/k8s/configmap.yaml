@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fleet-maintenance-config
+  namespace: fleet-maintenance
+  labels:
+    app.kubernetes.io/part-of: fleet-maintenance
+data:
+  KAFKA_BOOTSTRAP_SERVERS: "kafka-broker:9092"
+  DYNAMODB_TABLE_NAME: "fleet-maintenance"
+  DYNAMODB_OUTBOX_TABLE_NAME: "fleet-maintenance-outbox"
+  AWS_REGION: "us-east-1"
+  SPRING_PROFILES_ACTIVE: "prod"

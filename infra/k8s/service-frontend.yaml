@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: fleet-maintenance-frontend
+  namespace: fleet-maintenance
+  labels:
+    app: fleet-maintenance-frontend
+    app.kubernetes.io/part-of: fleet-maintenance
+spec:
+  selector:
+    app: fleet-maintenance-frontend
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+      protocol: TCP
+  type: LoadBalancer

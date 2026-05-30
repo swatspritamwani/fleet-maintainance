@@ -1,0 +1,36 @@
+.inspect-card {
+  max-width: 600px;
+  margin: 32px auto;
+}
+
+mat-form-field {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.attachment-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.attachment-row mat-form-field {
+  flex: 1;
+}
+
+.chips-list {
+  margin-top: 8px;
+}
+
+.request-context {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 16px;
+}

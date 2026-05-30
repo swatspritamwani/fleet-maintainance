@@ -1,0 +1,52 @@
+<mat-card class="assign-card">
+  <mat-card-header>
+    <mat-card-title>Assign Service Provider</mat-card-title>
+    <mat-card-subtitle>
+      <button mat-icon-button (click)="cancel()" aria-label="Back">
+        &#8592; Back
+      </button>
+    </mat-card-subtitle>
+  </mat-card-header>
+
+  <mat-card-content>
+    @if (request()) {
+      <div class="request-context">
+        <span><strong>Vehicle:</strong> {{ request()?.vehicleId }}</span>
+        &nbsp;&bull;&nbsp;
+        <span><strong>Request:</strong> {{ request()?.requestId?.substring(0, 8) }}</span>
+        &nbsp;&bull;&nbsp;
+        <span class="status-badge" [class]="request()?.priority | statusBadge">
+          {{ request()?.priority }}
+        </span>
+      </div>
+    }
+
+    <mat-form-field appearance="outline">
+      <mat-label>Service Provider</mat-label>
+      <mat-select [formControl]="providerCtrl">
+        @for (provider of providers(); track provider.providerId) {
+          <mat-option [value]="provider.providerId">{{ provider.name }}</mat-option>
+        }
+      </mat-select>
+      @if (providerCtrl.hasError('required') && providerCtrl.touched) {
+        <mat-error>A service provider is required.</mat-error>
+      }
+    </mat-form-field>
+
+    <div class="form-actions">
+      <button mat-button type="button" (click)="cancel()">Cancel</button>
+      <button
+        mat-raised-button
+        color="primary"
+        type="button"
+        [disabled]="submitting()"
+        (click)="submit()">
+        @if (submitting()) {
+          <mat-spinner diameter="20"></mat-spinner>
+        } @else {
+          Assign Provider
+        }
+      </button>
+    </div>
+  </mat-card-content>
+</mat-card>

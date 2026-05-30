@@ -1,0 +1,26 @@
+<h2 mat-dialog-title>{{ title }}</h2>
+
+<mat-dialog-content>
+  <mat-form-field appearance="outline" style="width: 100%;">
+    <mat-label>Remarks</mat-label>
+    <textarea
+      matInput
+      [formControl]="remarks"
+      rows="5"
+      maxlength="2000"
+      placeholder="Enter remarks...">
+    </textarea>
+    <mat-hint align="end">{{ remarks.value.length }}/2000</mat-hint>
+    @if (remarks.hasError('required') && remarks.touched) {
+      <mat-error>Remarks are required.</mat-error>
+    }
+    @if (remarks.hasError('maxlength')) {
+      <mat-error>Remarks cannot exceed 2000 characters.</mat-error>
+    }
+  </mat-form-field>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancel()">Cancel</button>
+  <button mat-raised-button color="warn" (click)="confirm()">Confirm</button>
+</mat-dialog-actions>

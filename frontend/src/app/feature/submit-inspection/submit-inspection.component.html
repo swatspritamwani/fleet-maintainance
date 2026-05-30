@@ -1,0 +1,101 @@
+<mat-card class="inspect-card">
+  <mat-card-header>
+    <mat-card-title>Submit Inspection Report</mat-card-title>
+    <mat-card-subtitle>
+      <button mat-button type="button" (click)="cancel()">&#8592; Back</button>
+    </mat-card-subtitle>
+  </mat-card-header>
+
+  <mat-card-content>
+    @if (request()) {
+      <div class="request-context">
+        <span><strong>Vehicle:</strong> {{ request()?.vehicleId }}</span>
+        &nbsp;&bull;&nbsp;
+        <span><strong>Request:</strong> {{ request()?.requestId?.substring(0, 8) }}</span>
+        &nbsp;&bull;&nbsp;
+        <span><strong>Status:</strong> {{ request()?.status }}</span>
+      </div>
+    }
+
+    <form [formGroup]="form" (ngSubmit)="submit()">
+
+      <mat-form-field appearance="outline">
+        <mat-label>Findings</mat-label>
+        <textarea
+          matInput
+          formControlName="findings"
+          rows="6"
+          maxlength="5000"
+          placeholder="Describe inspection findings...">
+        </textarea>
+        <mat-hint align="end">{{ form.controls.findings.value.length }}/5000</mat-hint>
+        @if (form.controls.findings.hasError('required') && form.controls.findings.touched) {
+          <mat-error>Findings are required.</mat-error>
+        }
+        @if (form.controls.findings.hasError('maxlength')) {
+          <mat-error>Findings cannot exceed 5000 characters.</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Estimated Cost</mat-label>
+        <input matInput type="number" min="0" formControlName="estimatedCost" placeholder="0.00" />
+        @if (form.controls.estimatedCost.hasError('required') && form.controls.estimatedCost.touched) {
+          <mat-error>Estimated cost is required.</mat-error>
+        }
+        @if (form.controls.estimatedCost.hasError('min')) {
+          <mat-error>Cost must be 0 or greater.</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Estimated Duration (days)</mat-label>
+        <input matInput type="number" min="1" formControlName="estimatedDurationDays" placeholder="1" />
+        @if (form.controls.estimatedDurationDays.hasError('required') && form.controls.estimatedDurationDays.touched) {
+          <mat-error>Estimated duration is required.</mat-error>
+        }
+        @if (form.controls.estimatedDurationDays.hasError('min')) {
+          <mat-error>Duration must be at least 1 day.</mat-error>
+        }
+      </mat-form-field>
+
+      <div class="attachment-row">
+        <mat-form-field appearance="outline">
+          <mat-label>Attachment URL</mat-label>
+          <input matInput [formControl]="attachmentInputCtrl" placeholder="https://..." />
+        </mat-form-field>
+        <button
+          mat-stroked-button
+          type="button"
+          (click)="addAttachment(attachmentInputCtrl.value)">
+          Add
+        </button>
+      </div>
+
+      @if (attachments().length > 0) {
+        <mat-chip-set class="chips-list" aria-label="Attachments">
+          @for (url of attachments(); track url; let i = $index) {
+            <mat-chip (removed)="removeAttachment(i)">
+              {{ url }}
+              <button matChipRemove aria-label="Remove attachment">
+                <mat-icon>cancel</mat-icon>
+              </button>
+            </mat-chip>
+          }
+        </mat-chip-set>
+      }
+
+      <div class="form-actions">
+        <button mat-button type="button" (click)="cancel()">Cancel</button>
+        <button mat-raised-button color="primary" type="submit" [disabled]="submitting()">
+          @if (submitting()) {
+            <mat-spinner diameter="20"></mat-spinner>
+          } @else {
+            Submit Inspection
+          }
+        </button>
+      </div>
+
+    </form>
+  </mat-card-content>
+</mat-card>

@@ -1,0 +1,26 @@
+# Maven build output
+target/
+**/target/
+
+# Node / Angular
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+
+# IDE
+.idea/
+*.iml
+*.iws
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets / env
+.env
+.env.local
+*.key
+*.pem
+
+# OWASP NVD cache
+dependency-check-report.*

@@ -1,0 +1,21 @@
+.assign-card {
+  max-width: 500px;
+  margin: 32px auto;
+}
+
+mat-form-field {
+  width: 100%;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.request-context {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 16px;
+}
